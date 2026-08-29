@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 현황
 
-진행 중. 스캐폴딩(1단계)과 도메인 로직+테스트(2단계) 완료. 남은 단계: 원판 SVG+UI(3), Anti-AI-Slop Lint(4), localStorage(5), 마감(6). "구현 순서" 섹션 참조.
+진행 중. 1~3단계 완료 (스캐폴딩 / 도메인 로직+테스트 / 원판 SVG+UI). 남은 단계: Anti-AI-Slop Lint(4), localStorage(5), 마감(6). "구현 순서" 섹션 참조.
 
 **명령:**
 - `npm run dev` — 개발 서버
@@ -17,8 +17,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **디렉터리:**
 - `src/domain/` — 프레임워크·DOM 의존 없는 순수 로직. `index.ts`가 공개 API 배럴. UI는 이것만 import.
   - `types.ts` 데이터 모델 · `rng.ts` seeded PRNG(mulberry32)+Fisher-Yates · `input.ts` 입력 파싱 · `wheel.ts` 슬롯 생성/셔플/결과 추첨 · `draw.ts` 상태 머신
-- `src/main.ts` — 앱 엔트리 (UI는 3단계에서 구현)
+- `src/ui/` — DOM 직접 조작. 상태는 도메인이 소유, 여기선 렌더링만.
+  - `geometry.ts` SVG 섹터 path + **회전 각도 역산**(순수, 테스트됨) · `wheel-view.ts` SVG 원판 렌더+회전 애니메이션 · `app.ts` 3화면 컨트롤러 · `format.ts` 시각/CSV 포맷
+- `src/main.ts` — 엔트리. 폰트(로컬 번들) + style.css + `mountApp`
+- `src/style.css` — Anti-AI-Slop 준수 스타일. 원판 회전 그룹(`.wheel-rotor`)만 transition 예외
 - `tools/` — Anti-AI-Slop Lint (4단계에서 구현, 현재 스텁)
+
+**테스트 환경:** 기본 `node`. DOM 필요한 파일은 상단에 `// @vitest-environment jsdom` 주석. `src/ui/app.test.ts`가 3화면 통합 테스트 (reduced-motion으로 회전 즉시완료). 이 환경은 브라우저 자동 구동 불가 (sudo 없음, chromium 시스템 라이브러리 부재) — UI 검증은 jsdom으로.
 
 ## 무엇을 만드는가
 
@@ -89,8 +94,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 1. ~~**스캐폴딩**~~ ✅ — Vite vanilla-ts, `package.json` 스크립트, Vitest 설정, 디렉터리 구조.
 2. ~~**도메인 로직 + 테스트**~~ ✅ — `src/domain/` 순수 모듈. 데이터 모델, 슬롯 생성/재배치 셔플, 회전 결과 추첨(seeded RNG), 당첨 처리, 상태 전환, 엣지 케이스(EC-1~EC-8). 71개 테스트.
-3. **원판 SVG + UI** — 설정 화면, 추첨 화면, 종료 화면. 회전 각도 역산. 회전 중 잠금. 결과를 시각+텍스트로 동시 전달.
-4. **Anti-AI-Slop Lint** — `tools/` 구축 ([Requirement.md](Requirement.md) 8.4). stylelint 플러그인 + 텍스트 스캐너 + 화이트리스트. 자체 테스트로 규칙 검증. CI/pre-commit 연결.
+3. ~~**원판 SVG + UI**~~ ✅ — 3화면 컨트롤러(`src/ui/app.ts`), SVG 원판, 회전 각도 역산(`geometry.ts`), 회전 중 잠금, 결과 시각+텍스트 병기, EC-8 번호+범례. 105개 테스트.
+4. **Anti-AI-Slop Lint** — `tools/` 구축 ([Requirement.md](Requirement.md) 8.4). stylelint 플러그인 + 텍스트 스캐너 + 화이트리스트. 자체 테스트로 규칙 검증. CI/pre-commit 연결. `@font-face`의 `url()`은 AS-CSS-16 대상 아님(배경/mask만) — 화이트리스트에 명시.
 5. **localStorage 상태 복원** — 확정 상태만 저장, 회전 중 새로고침은 마지막 확정 상태로 복원 (EC-7).
 6. **마감** — CSV 내보내기(선택), 반응형(모바일 세로 재배치), 접근성(색+텍스트 병기), 대형 화면 폰트 크기.
 
