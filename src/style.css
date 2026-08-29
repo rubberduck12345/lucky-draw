@@ -422,7 +422,7 @@ svg.wheel .wheel-rotor {
 svg.wheel .sector-label {
   font-family: var(--mono);
   /* 원판 라벨 크기 — 기존 11px의 4배. */
-  font-size: 44px;
+  font-size: 35px;
   font-weight: 700;
   fill: #000000;
   paint-order: stroke;
