@@ -4,8 +4,10 @@
 import {
   beginSpin,
   canSpin,
+  clearState,
   createRng,
   eligibleParticipants,
+  loadState,
   nextRound,
   parseParticipantsFromCount,
   parseParticipantsFromNames,
@@ -13,6 +15,7 @@ import {
   remainingPrizeCount,
   reset as resetState,
   resolveSpin,
+  saveState,
   startDrawing,
   type AppState,
   type DrawResult,
@@ -23,8 +26,15 @@ import { formatTime } from "./format.ts";
 import { createWheelView } from "./wheel-view.ts";
 
 export function mountApp(root: HTMLElement): void {
-  let state: AppState = resetState();
+  // NFR-3 / EC-7: 저장된 확정 상태가 있으면 복원 (회전 중이었으면 자동 해제).
+  let state: AppState = loadState() ?? resetState();
   const wheel = createWheelView();
+
+  // 상태를 갱신하는 유일한 경로 — 저장을 한곳에서 처리한다.
+  const commit = (next: AppState): void => {
+    state = next;
+    saveState(state);
+  };
 
   const rerender = (): void => {
     root.replaceChildren();
@@ -126,9 +136,11 @@ export function mountApp(root: HTMLElement): void {
     });
 
     start.addEventListener("click", () => {
-      state = startDrawing(participants, prizeList, createRng(), {
-        missOnceMode: missOnce.checked,
-      });
+      commit(
+        startDrawing(participants, prizeList, createRng(), {
+          missOnceMode: missOnce.checked,
+        }),
+      );
       wheel.reset();
       wheel.render(state.slots, state.prizes);
       rerender();
@@ -250,7 +262,7 @@ export function mountApp(root: HTMLElement): void {
     async function doSpin(spinBtn: HTMLButtonElement): Promise<void> {
       if (!canSpin(state)) return;
       paintOutcome(null);
-      // 결과 선확정 (FR-3.3, NFR-1)
+      // 결과 선확정 (FR-3.3, NFR-1). 회전 중 상태는 저장하지 않는다 (EC-7).
       const { state: spinning, outcome } = beginSpin(state, createRng());
       state = spinning;
       lockInputs(true); // FR-3.4 회전 중 잠금
@@ -258,7 +270,8 @@ export function mountApp(root: HTMLElement): void {
 
       await wheel.spinTo(outcome.slotIndex, state.slots.length);
 
-      state = resolveSpin(state, outcome, createRng());
+      // 확정 — 여기서부터 저장한다.
+      commit(resolveSpin(state, outcome, createRng()));
       const last = state.results[state.results.length - 1] ?? null;
       paintOutcome(last);
       wheel.render(state.slots, state.prizes); // 재배치 반영 (FR-5)
@@ -271,7 +284,7 @@ export function mountApp(root: HTMLElement): void {
         return;
       }
       // 다음 라운드 참가자 지정 (FR-6.1 기본)
-      state = nextRound(state, createRng());
+      commit(nextRound(state, createRng()));
       paintCurrent();
       paintActions();
     }
@@ -279,6 +292,7 @@ export function mountApp(root: HTMLElement): void {
     function confirmReset(): void {
       if (!window.confirm("모든 진행 상황이 지워집니다. 처음 화면으로 돌아갈까요?")) return;
       state = resetState();
+      clearState();
       wheel.reset();
       rerender();
     }

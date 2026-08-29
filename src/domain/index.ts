@@ -15,6 +15,13 @@ export {
   type SpinOutcome,
 } from "./wheel.ts";
 export {
+  loadState,
+  saveState,
+  clearState,
+  serialize,
+  deserialize,
+} from "./persist.ts";
+export {
   startDrawing,
   startDrawingLive,
   assignNextParticipant,

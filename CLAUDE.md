@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 현황
 
-진행 중. 1~4단계 완료 (스캐폴딩 / 도메인 로직+테스트 / 원판 SVG+UI / Anti-AI-Slop Lint). 남은 단계: localStorage(5), 마감(6). "구현 순서" 섹션 참조.
+진행 중. 1~5단계 완료. 남은 단계: 마감(6 — CSV 내보내기·반응형·접근성 점검·수동 참가자 선택 UI). "구현 순서" 섹션 참조.
 
 **명령:**
 - `npm run dev` — 개발 서버
@@ -16,7 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **디렉터리:**
 - `src/domain/` — 프레임워크·DOM 의존 없는 순수 로직. `index.ts`가 공개 API 배럴. UI는 이것만 import.
-  - `types.ts` 데이터 모델 · `rng.ts` seeded PRNG(mulberry32)+Fisher-Yates · `input.ts` 입력 파싱 · `wheel.ts` 슬롯 생성/셔플/결과 추첨 · `draw.ts` 상태 머신
+  - `types.ts` 데이터 모델 · `rng.ts` seeded PRNG(mulberry32)+Fisher-Yates · `input.ts` 입력 파싱 · `wheel.ts` 슬롯 생성/셔플/결과 추첨 · `draw.ts` 상태 머신 · `persist.ts` localStorage 저장/복원(확정 상태만, 회전 중 저장 안 함 — EC-7)
 - `src/ui/` — DOM 직접 조작. 상태는 도메인이 소유, 여기선 렌더링만.
   - `geometry.ts` SVG 섹터 path + **회전 각도 역산**(순수, 테스트됨) · `wheel-view.ts` SVG 원판 렌더+회전 애니메이션 · `app.ts` 3화면 컨트롤러 · `format.ts` 시각/CSV 포맷
 - `src/main.ts` — 엔트리. 폰트(로컬 번들) + style.css + `mountApp`
@@ -99,7 +99,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. ~~**도메인 로직 + 테스트**~~ ✅ — `src/domain/` 순수 모듈. 데이터 모델, 슬롯 생성/재배치 셔플, 회전 결과 추첨(seeded RNG), 당첨 처리, 상태 전환, 엣지 케이스(EC-1~EC-8). 71개 테스트.
 3. ~~**원판 SVG + UI**~~ ✅ — 3화면 컨트롤러(`src/ui/app.ts`), SVG 원판, 회전 각도 역산(`geometry.ts`), 회전 중 잠금, 결과 시각+텍스트 병기, EC-8 번호+범례. 105개 테스트.
 4. ~~**Anti-AI-Slop Lint**~~ ✅ — `tools/` 구축. stylelint AST 플러그인 + 정규식 스캐너 + 화이트리스트. 51개 자체 테스트. CI/pre-commit 연결. `@font-face`의 `url()`은 AS-CSS-16 대상 아님(배경/mask만).
-5. **localStorage 상태 복원** — 확정 상태만 저장, 회전 중 새로고침은 마지막 확정 상태로 복원 (EC-7).
-6. **마감** — CSV 내보내기(선택), 반응형(모바일 세로 재배치), 접근성(색+텍스트 병기), 대형 화면 폰트 크기.
+5. ~~**localStorage 상태 복원**~~ ✅ — `persist.ts`. 확정 상태만 저장(`commit()` 단일 경로), 회전 중 저장 안 함, 손상 저장본 방어, 저장소 접근 예외 삼킴. EC-7 복원.
+6. **마감** — CSV 내보내기 버튼(`format.ts`의 `resultsToCsv`는 있음, UI 연결 필요), 수동 참가자 선택 UI(`selectParticipant`는 도메인에 있음), 반응형 점검, 접근성(색+텍스트 병기) 점검, 대형 화면 폰트 크기.
 
 각 단계 완료 시 이 문서의 "프로젝트 현황"과 명령/구조 설명을 갱신할 것.

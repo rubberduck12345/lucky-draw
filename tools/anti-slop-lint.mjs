@@ -56,6 +56,8 @@ function isExcluded(relPath) {
 
 function walk(dir, acc) {
   for (const entry of readdirSync(dir)) {
+    // 숨김 디렉터리·파일(.git, .github 등)은 스캔 대상 아님
+    if (entry.startsWith(".")) continue;
     const full = join(dir, entry);
     const rel = relative(ROOT, full);
     if (isExcluded(rel)) continue;

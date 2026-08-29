@@ -13,6 +13,12 @@ beforeEach(() => {
   document.body.innerHTML = "";
   root = document.createElement("div");
   document.body.appendChild(root);
+  // 테스트 간 저장 상태 누출 방지 (jsdom localStorage는 실제 동작)
+  try {
+    localStorage.clear();
+  } catch {
+    /* noop */
+  }
   // prefers-reduced-motion: reduce → 회전이 즉시 완료된다
   vi.stubGlobal("matchMedia", (q: string) => ({
     matches: q.includes("reduce"),
@@ -23,6 +29,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  try {
+    localStorage.clear();
+  } catch {
+    /* noop */
+  }
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -169,6 +180,55 @@ describe("회전 → 결과 → 종료 흐름", () => {
     const outcome = root.querySelector("#outcome-slot .outcome");
     expect(outcome).not.toBeNull();
     expect(["win", "miss"]).toContain((outcome as HTMLElement).dataset.kind);
+  });
+});
+
+describe("NFR-3 / EC-7: localStorage 복원", () => {
+  it("추첨 중 새 mountApp이 저장된 상태를 복원한다", async () => {
+    mountApp(root);
+    typeInto("#names", "A\nB\nC");
+    typeInto("#prizes", "상1\n상2");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+    // 한 번 돌려서 결과를 만든다
+    root.querySelector<HTMLButtonElement>("#spin-btn")!.dispatchEvent(
+      new Event("click", { bubbles: true }),
+    );
+    await flush();
+    const roundBefore = $("#s-round").textContent;
+
+    // 새로고침 시뮬레이션: 새 root에 다시 mount
+    document.body.innerHTML = "";
+    const root2 = document.createElement("div");
+    document.body.appendChild(root2);
+    mountApp(root2);
+
+    expect(root2.textContent).toContain("추첨 진행");
+    expect(root2.querySelector("#s-round")?.textContent).toBe(roundBefore);
+    expect(root2.querySelector("svg.wheel")).not.toBeNull();
+  });
+
+  it("초기화하면 저장본이 지워져 다음 mount는 설정 화면", async () => {
+    mountApp(root);
+    typeInto("#names", "A\nB");
+    typeInto("#prizes", "상1\n상2");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    [...root.querySelectorAll("button")]
+      .find((b) => b.textContent === "초기화")!
+      .dispatchEvent(new Event("click", { bubbles: true }));
+
+    document.body.innerHTML = "";
+    const root2 = document.createElement("div");
+    document.body.appendChild(root2);
+    mountApp(root2);
+    expect(root2.querySelector("#names")).not.toBeNull();
+  });
+
+  it("손상된 저장본은 무시하고 설정 화면", () => {
+    localStorage.setItem("lucky-draw:state", "{corrupt");
+    mountApp(root);
+    expect($("#names")).not.toBeNull();
   });
 });
 
