@@ -4,7 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 현황
 
-이 저장소는 **초기 상태**입니다. 현재는 `README.md`와 [Requirement.md](Requirement.md)(요구사항 정의서 v0.2)만 존재하며, 애플리케이션 코드·빌드 도구·테스트가 아직 없습니다. 구현을 시작할 때 이 문서를 갱신하세요 (빌드/린트/테스트 명령, 단일 테스트 실행 방법 등). 앱 스캐폴딩 시 `tools/`의 Anti-AI-Slop Lint(아래 참조)도 함께 구축해야 합니다.
+진행 중. 스캐폴딩(1단계)과 도메인 로직+테스트(2단계) 완료. 남은 단계: 원판 SVG+UI(3), Anti-AI-Slop Lint(4), localStorage(5), 마감(6). "구현 순서" 섹션 참조.
+
+**명령:**
+- `npm run dev` — 개발 서버
+- `npm run build` — `tsc --noEmit` + `vite build` (dist/)
+- `npm test` — Vitest 1회 실행 / `npm run test:watch` — 감시 모드
+- 단일 테스트: `npx vitest run src/domain/draw.test.ts` 또는 `npx vitest -t "종료 조건"`
+- `npm run typecheck` — 타입 검사만
+- `npm run lint` — stylelint + Anti-Slop / `npm run lint:slop` — Anti-Slop 단독
+
+**디렉터리:**
+- `src/domain/` — 프레임워크·DOM 의존 없는 순수 로직. `index.ts`가 공개 API 배럴. UI는 이것만 import.
+  - `types.ts` 데이터 모델 · `rng.ts` seeded PRNG(mulberry32)+Fisher-Yates · `input.ts` 입력 파싱 · `wheel.ts` 슬롯 생성/셔플/결과 추첨 · `draw.ts` 상태 머신
+- `src/main.ts` — 앱 엔트리 (UI는 3단계에서 구현)
+- `tools/` — Anti-AI-Slop Lint (4단계에서 구현, 현재 스텁)
 
 ## 무엇을 만드는가
 
@@ -73,8 +87,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 구현 순서 (도메인 먼저)
 
-1. **스캐폴딩** — Vite vanilla-ts, `package.json` 스크립트(`dev`/`build`/`preview`/`test`/`lint`/`lint:slop`), Vitest 설정, 디렉터리 구조.
-2. **도메인 로직 + 테스트** — 프레임워크·DOM 의존 없는 순수 모듈. 데이터 모델([Requirement.md](Requirement.md) 5장), 슬롯 생성/재배치 셔플, 회전 결과 추첨(seeded RNG로 테스트 가능하게), 당첨 처리, 상태 전환(`setup`→`drawing`→`finished`), 엣지 케이스(EC-1~EC-8). 각 규칙마다 테스트.
+1. ~~**스캐폴딩**~~ ✅ — Vite vanilla-ts, `package.json` 스크립트, Vitest 설정, 디렉터리 구조.
+2. ~~**도메인 로직 + 테스트**~~ ✅ — `src/domain/` 순수 모듈. 데이터 모델, 슬롯 생성/재배치 셔플, 회전 결과 추첨(seeded RNG), 당첨 처리, 상태 전환, 엣지 케이스(EC-1~EC-8). 71개 테스트.
 3. **원판 SVG + UI** — 설정 화면, 추첨 화면, 종료 화면. 회전 각도 역산. 회전 중 잠금. 결과를 시각+텍스트로 동시 전달.
 4. **Anti-AI-Slop Lint** — `tools/` 구축 ([Requirement.md](Requirement.md) 8.4). stylelint 플러그인 + 텍스트 스캐너 + 화이트리스트. 자체 테스트로 규칙 검증. CI/pre-commit 연결.
 5. **localStorage 상태 복원** — 확정 상태만 저장, 회전 중 새로고침은 마지막 확정 상태로 복원 (EC-7).
