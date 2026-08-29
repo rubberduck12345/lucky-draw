@@ -15,6 +15,7 @@
 
   /* 액센트 1색 — 당첨/주요 동작에만 */
   --accent: #1c5d3a;
+  --accent-hover: #17492e;
   --accent-text: #ffffff;
 
   /* 상태색은 무채색 규칙의 예외로 최소한만: 경고 */
@@ -156,8 +157,8 @@ button.primary {
 }
 
 button.primary:hover {
-  background: #17492e;
-  border-color: #17492e;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 button.primary:disabled {

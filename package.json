@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
+    "prepare": "git config core.hooksPath .githooks || true",
     "lint": "npm run lint:css && npm run lint:slop",
     "lint:css": "stylelint \"src/**/*.css\"",
     "lint:slop": "node tools/anti-slop-lint.mjs"

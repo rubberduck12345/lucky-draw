@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 현황
 
-진행 중. 1~3단계 완료 (스캐폴딩 / 도메인 로직+테스트 / 원판 SVG+UI). 남은 단계: Anti-AI-Slop Lint(4), localStorage(5), 마감(6). "구현 순서" 섹션 참조.
+진행 중. 1~4단계 완료 (스캐폴딩 / 도메인 로직+테스트 / 원판 SVG+UI / Anti-AI-Slop Lint). 남은 단계: localStorage(5), 마감(6). "구현 순서" 섹션 참조.
 
 **명령:**
 - `npm run dev` — 개발 서버
@@ -21,7 +21,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - `geometry.ts` SVG 섹터 path + **회전 각도 역산**(순수, 테스트됨) · `wheel-view.ts` SVG 원판 렌더+회전 애니메이션 · `app.ts` 3화면 컨트롤러 · `format.ts` 시각/CSV 포맷
 - `src/main.ts` — 엔트리. 폰트(로컬 번들) + style.css + `mountApp`
 - `src/style.css` — Anti-AI-Slop 준수 스타일. 원판 회전 그룹(`.wheel-rotor`)만 transition 예외
-- `tools/` — Anti-AI-Slop Lint (4단계에서 구현, 현재 스텁)
+- `tools/` — Anti-AI-Slop Lint (Requirement.md 8.4)
+  - `anti-slop-rules.mjs` 정규식 규칙 정의 · `anti-slop-lint.mjs` 파일 스캐너(AS-CSS-1/2/6/7/8/9/16, AS-TXT-*, AS-MD-1) · `stylelint-plugin-anti-slop/index.mjs` AST 규칙(AS-CSS-3/4/5/10/11/12/13/14/15 + 폰트 fallback) · `anti-slop-allowlist.json` 화이트리스트(원판 회전 셀렉터, 스캔 제외 경로 — 항목 추가 시 사유 1줄 필수)
+- `.githooks/pre-commit` — lint:slop + lint:css + typecheck. `npm install`의 `prepare`가 `core.hooksPath` 설정
+- `.github/workflows/ci.yml` — typecheck → test → lint → build. lint 실패 시 머지 차단 (NFR-6)
 
 **테스트 환경:** 기본 `node`. DOM 필요한 파일은 상단에 `// @vitest-environment jsdom` 주석. `src/ui/app.test.ts`가 3화면 통합 테스트 (reduced-motion으로 회전 즉시완료). 이 환경은 브라우저 자동 구동 불가 (sudo 없음, chromium 시스템 라이브러리 부재) — UI 검증은 jsdom으로.
 
@@ -95,7 +98,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 1. ~~**스캐폴딩**~~ ✅ — Vite vanilla-ts, `package.json` 스크립트, Vitest 설정, 디렉터리 구조.
 2. ~~**도메인 로직 + 테스트**~~ ✅ — `src/domain/` 순수 모듈. 데이터 모델, 슬롯 생성/재배치 셔플, 회전 결과 추첨(seeded RNG), 당첨 처리, 상태 전환, 엣지 케이스(EC-1~EC-8). 71개 테스트.
 3. ~~**원판 SVG + UI**~~ ✅ — 3화면 컨트롤러(`src/ui/app.ts`), SVG 원판, 회전 각도 역산(`geometry.ts`), 회전 중 잠금, 결과 시각+텍스트 병기, EC-8 번호+범례. 105개 테스트.
-4. **Anti-AI-Slop Lint** — `tools/` 구축 ([Requirement.md](Requirement.md) 8.4). stylelint 플러그인 + 텍스트 스캐너 + 화이트리스트. 자체 테스트로 규칙 검증. CI/pre-commit 연결. `@font-face`의 `url()`은 AS-CSS-16 대상 아님(배경/mask만) — 화이트리스트에 명시.
+4. ~~**Anti-AI-Slop Lint**~~ ✅ — `tools/` 구축. stylelint AST 플러그인 + 정규식 스캐너 + 화이트리스트. 51개 자체 테스트. CI/pre-commit 연결. `@font-face`의 `url()`은 AS-CSS-16 대상 아님(배경/mask만).
 5. **localStorage 상태 복원** — 확정 상태만 저장, 회전 중 새로고침은 마지막 확정 상태로 복원 (EC-7).
 6. **마감** — CSV 내보내기(선택), 반응형(모바일 세로 재배치), 접근성(색+텍스트 병기), 대형 화면 폰트 크기.
 

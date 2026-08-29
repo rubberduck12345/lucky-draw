@@ -1,8 +1,10 @@
 {
+  "plugins": ["./tools/stylelint-plugin-anti-slop/index.mjs"],
   "rules": {
     "color-no-invalid-hex": true,
     "no-duplicate-selectors": true,
     "declaration-block-no-duplicate-properties": true,
-    "block-no-empty": true
+    "block-no-empty": true,
+    "anti-slop/no-slop": true
   }
 }
