@@ -66,10 +66,10 @@ describe("sectorPath", () => {
 });
 
 describe("labelPosition", () => {
-  it("반지름의 62% 지점, 섹터 중심 각도", () => {
-    // 4등분 index 0 → center 45도, r*0.62 = 55.8
+  it("반지름의 66% 지점, 섹터 중심 각도", () => {
+    // 4등분 index 0 → center 45도
     const p = labelPosition(100, 100, 90, 0, 4);
-    const expected = polarToCartesian(100, 100, 90 * 0.62, 45);
+    const expected = polarToCartesian(100, 100, 90 * 0.66, 45);
     expect(p.x).toBeCloseTo(expected.x, 5);
     expect(p.y).toBeCloseTo(expected.y, 5);
   });

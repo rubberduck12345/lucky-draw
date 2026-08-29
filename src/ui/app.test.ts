@@ -166,6 +166,34 @@ describe("회전 → 결과 → 종료 흐름", () => {
     expect(li.textContent).toMatch(/#\d/);
   });
 
+  it("당첨이 나면 축하 효과 오버레이가 채워진다", async () => {
+    // 이 테스트만 non-reduced motion → celebrate() 가 실제로 실행된다.
+    vi.stubGlobal("matchMedia", (q: string) => ({
+      matches: false,
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    vi.useFakeTimers();
+    mountApp(root);
+    typeInto("#names", "A\nB\nC\nD\nE\nF\nG\nH");
+    typeInto("#prizes", "특별상");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+
+    let celebrated = false;
+    for (let guard = 0; guard < 30 && !celebrated; guard++) {
+      const spin = root.querySelector<HTMLButtonElement>("#spin-btn");
+      if (!spin || spin.disabled) break;
+      spin.dispatchEvent(new Event("click", { bubbles: true }));
+      // spinTo 의 4600ms 안전망 타이머를 진행시켜 resolve 시킨다
+      await vi.advanceTimersByTimeAsync(5000);
+      const fx = root.querySelector<HTMLElement>(".wheel-fx");
+      if (fx && fx.childElementCount > 0) celebrated = true;
+    }
+    expect(celebrated).toBe(true);
+    vi.useRealTimers();
+  });
+
   it("회전 중에는 돌리기 버튼이 잠긴다 (FR-3.4)", async () => {
     mountApp(root);
     typeInto("#names", "A\nB");

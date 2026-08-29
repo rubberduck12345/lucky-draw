@@ -10,7 +10,7 @@
 npm install
 npm run dev      # 개발 서버
 npm test         # 테스트
-npm run lint     # stylelint + Anti-AI-Slop Lint
+npm run lint     # stylelint(CSS 위생) + 카피 검사(이모지·보일러플레이트)
 npm run build    # dist/ 정적 빌드
 ```
 

@@ -344,6 +344,8 @@ export function mountApp(root: HTMLElement): void {
       commit(resolveSpin(state, outcome, createRng()));
       const last = state.results[state.results.length - 1] ?? null;
       paintOutcome(last);
+      // 당첨이면 축하 효과(폭죽·풍선) 약 2초.
+      if (last && last.prizeId !== null) wheel.celebrate();
       wheel.render(state.slots, state.prizes); // 재배치 반영 (FR-5)
       paintStatus();
       paintCurrent();

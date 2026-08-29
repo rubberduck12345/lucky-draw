@@ -1,9 +1,11 @@
 // Anti-AI-Slop Lint 규칙 정의 (Requirement.md 8.4.1).
 //
-// 정규식으로 판정 가능한 규칙만 여기 둔다. 값 파싱이 필요한
-// AS-CSS-3/4/5/12/14/15 는 tools/stylelint-plugin-anti-slop 가 AST로 검사한다.
+// v0.3부터 CSS 디자인 규칙(AS-CSS-*)은 제거됐다 — 원판에 축제형 색상·
+// 폭죽/풍선 연출을 넣기로 하면서 "무채색 + 액센트 1색, 장식 모션 금지"
+// 제약을 걷어냈기 때문이다. 남은 것은 텍스트/카피 규칙뿐이다:
+// 이모지 금지, 마케팅 보일러플레이트 금지.
 //
-// 각 규칙: { id, targets: ("css"|"text")[], test(content) => [{line, col, excerpt}] }
+// 각 규칙: { id, targets: ("text"|"md")[], test(content) => [{line, col, excerpt}] }
 
 function findAll(content, regex) {
   const hits = [];
@@ -20,74 +22,7 @@ function findAll(content, regex) {
   return hits;
 }
 
-// CSS 주석과 문자열을 공백으로 치환해 오탐을 줄인다 (규칙 인용 방지).
-function stripCssNoise(css) {
-  return css
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    .replace(/"(?:[^"\\]|\\.)*"/g, (m) => m.replace(/[^\n]/g, " "))
-    .replace(/'(?:[^'\\]|\\.)*'/g, (m) => m.replace(/[^\n]/g, " "));
-}
-
-const KEYFRAME_NAMES = /pulse|shimmer|float|glow|shine|gradient|breathe|wobble|bounce/i;
-
 export const RULES = [
-  // ── CSS: 정규식 판정 ────────────────────────────────
-  {
-    id: "AS-CSS-1",
-    targets: ["css"],
-    desc: "그라데이션 함수 금지",
-    test: (c) => findAll(stripCssNoise(c), /(linear|radial|conic)-gradient\s*\(/i),
-  },
-  {
-    id: "AS-CSS-2",
-    targets: ["css"],
-    desc: "background-clip: text 금지 (그라데이션 텍스트)",
-    test: (c) => findAll(stripCssNoise(c), /background-clip\s*:\s*text/i),
-  },
-  {
-    id: "AS-CSS-6",
-    targets: ["css"],
-    desc: "backdrop-filter 금지 (글래스모피즘)",
-    test: (c) => findAll(stripCssNoise(c), /(?:-webkit-)?backdrop-filter\s*:/i),
-  },
-  {
-    id: "AS-CSS-7",
-    targets: ["css"],
-    desc: "filter: blur() / drop-shadow() 금지",
-    test: (c) =>
-      findAll(stripCssNoise(c), /[^-]filter\s*:\s*[^;]*(blur|drop-shadow)\s*\(/i),
-  },
-  {
-    id: "AS-CSS-8",
-    targets: ["css"],
-    desc: "text-shadow 금지",
-    test: (c) =>
-      findAll(stripCssNoise(c), /text-shadow\s*:\s*(?!none)[^;]+/i),
-  },
-  {
-    id: "AS-CSS-9",
-    targets: ["css"],
-    desc: "장식 키프레임 금지 (pulse/shimmer/float/glow/shine/gradient/breathe/wobble/bounce)",
-    test: (c) => {
-      const src = stripCssNoise(c);
-      const hits = findAll(src, new RegExp(`@keyframes\\s+[\\w-]*(${KEYFRAME_NAMES.source})`, "i"));
-      return hits;
-    },
-  },
-  {
-    id: "AS-CSS-16",
-    targets: ["css"],
-    desc: "배경 장식 금지 — background/mask 의 url(), repeating-gradient, mask-image",
-    test: (c) => {
-      const src = stripCssNoise(c);
-      const out = [];
-      out.push(...findAll(src, /(?:-webkit-)?mask(?:-image)?\s*:\s*(?!none)[^;]*url\s*\(/i));
-      out.push(...findAll(src, /background(?:-image)?\s*:\s*[^;]*repeating-(?:linear|radial|conic)-gradient/i));
-      out.push(...findAll(src, /background(?:-image)?\s*:\s*[^;]*url\s*\(/i));
-      return out;
-    },
-  },
-
   // ── 텍스트/카피 ─────────────────────────────────────
   {
     id: "AS-TXT-1",
@@ -140,4 +75,4 @@ export const RULES = [
   },
 ];
 
-export { findAll, stripCssNoise };
+export { findAll };
