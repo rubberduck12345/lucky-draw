@@ -155,7 +155,8 @@ describe("회전 → 결과 → 종료 흐름", () => {
     expect(root.textContent).toContain("추첨 종료");
     const buttons = [...root.querySelectorAll("button")].map((b) => b.textContent);
     expect(buttons).toContain("처음으로");
-    expect(root.textContent).toMatch(/당첨 \d+건/);
+    expect(root.textContent).toMatch(/당첨 \d+명/);
+    expect(root.textContent).toMatch(/잔여 경품 \d+개/);
   });
 
   it("당첨자 명단에 참가자·경품이 기록된다 (FR-7.1)", async () => {
@@ -180,6 +181,98 @@ describe("회전 → 결과 → 종료 흐름", () => {
     const outcome = root.querySelector("#outcome-slot .outcome");
     expect(outcome).not.toBeNull();
     expect(["win", "miss"]).toContain((outcome as HTMLElement).dataset.kind);
+  });
+});
+
+describe("FR-6.1: 수동 참가자 선택", () => {
+  function start(): void {
+    mountApp(root);
+    typeInto("#names", "가나\n다라\n마바");
+    typeInto("#prizes", "상1\n상2");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+  }
+
+  it("추첨 화면에 참가자 드롭다운이 있다", () => {
+    start();
+    const select = root.querySelector<HTMLSelectElement>("#manual-pick")!;
+    expect(select).not.toBeNull();
+    const opts = [...select.options].map((o) => o.textContent);
+    expect(opts).toContain("자동 (무작위)");
+    expect(opts).toContain("가나");
+    expect(opts).toContain("다라");
+    expect(opts).toContain("마바");
+  });
+
+  it("드롭다운에서 고르면 현재 참가자가 바뀐다", () => {
+    start();
+    const select = root.querySelector<HTMLSelectElement>("#manual-pick")!;
+    const target = [...select.options].find((o) => o.textContent === "마바")!;
+    select.value = target.value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(root.querySelector(".current .name")?.textContent).toBe("마바");
+  });
+
+  it("종료 화면에는 드롭다운이 없다", async () => {
+    mountApp(root);
+    typeInto("#names", "A\nB");
+    typeInto("#prizes", "상1\n상2\n상3");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+    for (let i = 0; i < 20; i++) {
+      const spin = root.querySelector<HTMLButtonElement>("#spin-btn");
+      if (!spin || spin.disabled) break;
+      spin.dispatchEvent(new Event("click", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    }
+    expect(root.textContent).toContain("추첨 종료");
+    expect(root.querySelector("#manual-pick")).toBeNull();
+  });
+});
+
+describe("FR-7.3: CSV 내보내기", () => {
+  it("결과가 없으면 버튼 비활성", () => {
+    mountApp(root);
+    typeInto("#names", "A\nB");
+    typeInto("#prizes", "상1\n상2");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+    expect(($("#export-csv") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("결과가 생기면 버튼 활성, 클릭 시 다운로드 트리거", async () => {
+    // Blob/createObjectURL 스텁
+    const created: string[] = [];
+    vi.stubGlobal("URL", {
+      createObjectURL: () => {
+        const u = `blob:mock-${created.length}`;
+        created.push(u);
+        return u;
+      },
+      revokeObjectURL: () => {},
+    });
+    const clicks: string[] = [];
+    const origClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      clicks.push(this.download);
+    };
+
+    mountApp(root);
+    typeInto("#names", "A\nB\nC");
+    typeInto("#prizes", "상1");
+    $("#start").dispatchEvent(new Event("click", { bubbles: true }));
+    root.querySelector<HTMLButtonElement>("#spin-btn")!.dispatchEvent(
+      new Event("click", { bubbles: true }),
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // 종료 화면의 export 버튼
+    const btn = root.querySelector<HTMLButtonElement>("#export-csv")!;
+    expect(btn.disabled).toBe(false);
+    btn.dispatchEvent(new Event("click", { bubbles: true }));
+    expect(clicks.length).toBe(1);
+    expect(clicks[0]).toMatch(/lucky-draw-results-\d{4}-\d{2}-\d{2}\.csv/);
+
+    HTMLAnchorElement.prototype.click = origClick;
   });
 });
 

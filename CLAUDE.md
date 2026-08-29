@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 현황
 
-진행 중. 1~5단계 완료. 남은 단계: 마감(6 — CSV 내보내기·반응형·접근성 점검·수동 참가자 선택 UI). "구현 순서" 섹션 참조.
+**전 단계 완료.** 6단계 구현 순서(1~6)를 모두 마쳤습니다. 180개 테스트 통과, lint·build 통과. 요구사항 FR-1~7, EC-1~8, NFR-1~6, 디자인 8장 전부 반영. 추가 작업 시 이 문서와 [Requirement.md](Requirement.md)를 기준으로.
 
 **명령:**
 - `npm run dev` — 개발 서버
@@ -18,8 +18,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `src/domain/` — 프레임워크·DOM 의존 없는 순수 로직. `index.ts`가 공개 API 배럴. UI는 이것만 import.
   - `types.ts` 데이터 모델 · `rng.ts` seeded PRNG(mulberry32)+Fisher-Yates · `input.ts` 입력 파싱 · `wheel.ts` 슬롯 생성/셔플/결과 추첨 · `draw.ts` 상태 머신 · `persist.ts` localStorage 저장/복원(확정 상태만, 회전 중 저장 안 함 — EC-7)
 - `src/ui/` — DOM 직접 조작. 상태는 도메인이 소유, 여기선 렌더링만.
-  - `geometry.ts` SVG 섹터 path + **회전 각도 역산**(순수, 테스트됨) · `wheel-view.ts` SVG 원판 렌더+회전 애니메이션 · `app.ts` 3화면 컨트롤러 · `format.ts` 시각/CSV 포맷
-- `src/main.ts` — 엔트리. 폰트(로컬 번들) + style.css + `mountApp`
+  - `geometry.ts` SVG 섹터 path + **회전 각도 역산**(순수, 테스트됨) · `wheel-view.ts` SVG 원판 렌더+회전 애니메이션 · `app.ts` 3화면 컨트롤러(수동 참가자 선택 드롭다운, CSV 내보내기 포함) · `format.ts` 시각/CSV 포맷
+- `src/main.ts` — 엔트리. `fonts.css` + `style.css` + `mountApp`
+- `src/fonts.css` — 자체 `@font-face`, woff2만 로드(@fontsource 파일 직참조). 한글·라틴 서브셋 분리. woff 미포함으로 용량 절감
 - `src/style.css` — Anti-AI-Slop 준수 스타일. 원판 회전 그룹(`.wheel-rotor`)만 transition 예외
 - `tools/` — Anti-AI-Slop Lint (Requirement.md 8.4)
   - `anti-slop-rules.mjs` 정규식 규칙 정의 · `anti-slop-lint.mjs` 파일 스캐너(AS-CSS-1/2/6/7/8/9/16, AS-TXT-*, AS-MD-1) · `stylelint-plugin-anti-slop/index.mjs` AST 규칙(AS-CSS-3/4/5/10/11/12/13/14/15 + 폰트 fallback) · `anti-slop-allowlist.json` 화이트리스트(원판 회전 셀렉터, 스캔 제외 경로 — 항목 추가 시 사유 1줄 필수)
@@ -43,7 +44,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **경품 당첨 시 원판 재배치(Reshuffle).** 소진된 경품 제거 후 남은 경품으로 슬롯을 다시 생성하고 순서를 무작위 셔플. 꽝 슬롯은 셔플 후에도 1칸 유지. 장식 모션이 아닌 상태 전환으로 처리.
 - **꽝 기본 정책: 참가자 잔류** (다음 라운드 재참여 가능). `missOnceMode` 토글 시 꽝도 즉시 제외(`status: out`).
 - **회전 중 입력 변경/재시작 잠금** (FR-3.4, 중복 클릭 방지).
-- **종료 조건:** 경품 소진 또는 참가자 소진. 미당첨 참가자는 명단에 "미당첨"으로 남김.
+- **종료 조건:** 경품 소진 또는 참가자 소진. 미당첨 참가자는 `status: eligible`로 명단에 남고 종료 요약에 "미당첨 N명"으로 표시.
 
 파생 불변식: `slots.length === (소진 안 된 경품 수) + 1`.
 
@@ -77,12 +78,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 위 제약은 **CI에서 자동 강제**되며 위반 시 머지가 차단됩니다 (NFR-6). AI가 생성한 스타일·카피의 흔적을 빌드 단계에서 검출합니다.
 
-- **CSS/스타일**: `stylelint` + 저장소 로컬 플러그인(`tools/stylelint-plugin-anti-slop`). 그라데이션, 유채색/다중레이어/blur≥20px `box-shadow`, `backdrop-filter`, `text-shadow`, 장식 `@keyframes`, 화이트리스트 밖 `animation`, `transform` 전이, 150ms 초과 `transition`, `:hover` 내 `transform`, `border-radius` > 8px, 임의 유채색 리터럴, 배경 `url()`/`mask` 등. 값 파싱이 필요한 규칙은 AST 기반.
-- **텍스트/카피**: `tools/anti-slop-lint.mjs` — 이모지, 마케팅 보일러플레이트(영/한), 뱃지/pill 클래스 남용 검사.
-- **화이트리스트**: `tools/anti-slop-allowlist.json` 한 곳에서 관리 (원판 회전 셀렉터 `.wheel`/`[data-wheel]`, 승인된 뱃지 클래스, 예외 경로). 추가 시 PR에 사유 1줄 필수.
-- **실행**: `npm run lint`(전체) / `npm run lint:slop`(Anti-AI-Slop 단독). pre-commit 훅 + CI 필수.
+- **CSS/스타일**: `stylelint` + 로컬 플러그인(`tools/stylelint-plugin-anti-slop/index.mjs`, AST). 유채색/다중레이어/blur≥20px `box-shadow`, 화이트리스트 밖 `animation`, `transform`/`all` 전이, 150ms 초과 `transition`, `:hover` 내 `transform`, `border-radius` > 8px, 유채색 리터럴(→ `var()` 강제), 폰트 fallback. + `tools/anti-slop-lint.mjs`(정규식): 그라데이션, `backdrop-filter`, `filter: blur/drop-shadow`, `text-shadow`, 장식 `@keyframes`, 배경 `url()`/`mask`.
+- **텍스트/카피**: `tools/anti-slop-lint.mjs` — 이모지(Emoji_Presentation/VS16/국기/ZWJ만), 마케팅 보일러플레이트(영/한).
+- **화이트리스트**: `tools/anti-slop-allowlist.json` (회전 셀렉터 `.wheel-rotor`, 스캔 제외 경로). 추가 시 사유 1줄 필수.
+- **실행**: `npm run lint`(전체) / `npm run lint:slop`(단독). pre-commit 훅(`.githooks`) + CI 강제.
 
-구현 파일(`tools/`)이 아직 없다면 앱 스캐폴딩과 함께 만들어야 합니다. 규칙 표 전체는 [Requirement.md](Requirement.md) 8.4.1 참조.
+규칙 표 전체는 [Requirement.md](Requirement.md) 8.4.1 참조. lint 도구 자체 테스트: `npx vitest run tools/`.
 
 ## 기술 스택 (확정)
 
@@ -100,6 +101,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. ~~**원판 SVG + UI**~~ ✅ — 3화면 컨트롤러(`src/ui/app.ts`), SVG 원판, 회전 각도 역산(`geometry.ts`), 회전 중 잠금, 결과 시각+텍스트 병기, EC-8 번호+범례. 105개 테스트.
 4. ~~**Anti-AI-Slop Lint**~~ ✅ — `tools/` 구축. stylelint AST 플러그인 + 정규식 스캐너 + 화이트리스트. 51개 자체 테스트. CI/pre-commit 연결. `@font-face`의 `url()`은 AS-CSS-16 대상 아님(배경/mask만).
 5. ~~**localStorage 상태 복원**~~ ✅ — `persist.ts`. 확정 상태만 저장(`commit()` 단일 경로), 회전 중 저장 안 함, 손상 저장본 방어, 저장소 접근 예외 삼킴. EC-7 복원.
-6. **마감** — CSV 내보내기 버튼(`format.ts`의 `resultsToCsv`는 있음, UI 연결 필요), 수동 참가자 선택 UI(`selectParticipant`는 도메인에 있음), 반응형 점검, 접근성(색+텍스트 병기) 점검, 대형 화면 폰트 크기.
+6. ~~**마감**~~ ✅ — CSV 내보내기 버튼(BOM 포함, `URL.createObjectURL`), 수동 참가자 선택 드롭다운(FR-6.1 옵션), 종료 화면 요약(미당첨/꽝탈락/잔여경품 구분), 인라인 스타일 → CSS 클래스, woff 제거로 폰트 용량 절감. 180개 테스트.
 
 각 단계 완료 시 이 문서의 "프로젝트 현황"과 명령/구조 설명을 갱신할 것.

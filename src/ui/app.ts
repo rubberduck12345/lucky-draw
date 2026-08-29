@@ -16,14 +16,36 @@ import {
   reset as resetState,
   resolveSpin,
   saveState,
+  selectParticipant,
   startDrawing,
   type AppState,
   type DrawResult,
   type Participant,
   type Prize,
 } from "../domain/index.ts";
-import { formatTime } from "./format.ts";
+import { formatTime, resultsToCsv } from "./format.ts";
 import { createWheelView } from "./wheel-view.ts";
+
+// 당첨자 명단을 CSV 파일로 저장 (FR-7.3). BOM을 붙여 Excel 한글 호환.
+function downloadResultsCsv(state: AppState): void {
+  const csv = resultsToCsv(
+    state.results.map((r) => ({
+      round: r.round,
+      participantLabel: r.participantLabel,
+      prizeName: r.prizeName,
+      timestamp: r.timestamp,
+    })),
+  );
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `lucky-draw-results-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export function mountApp(root: HTMLElement): void {
   // NFR-3 / EC-7: 저장된 확정 상태가 있으면 복원 (회전 중이었으면 자동 해제).
@@ -61,7 +83,7 @@ export function mountApp(root: HTMLElement): void {
         <div class="field">
           <label for="count">참가자 — 숫자로 생성 (1 ~ N번)</label>
           <div class="row">
-            <input type="number" id="count" min="1" placeholder="예: 30" style="max-width:160px" />
+            <input type="number" id="count" min="1" placeholder="예: 30" class="count-input" />
             <button type="button" id="count-apply">번호로 채우기</button>
           </div>
           <div class="hint">이름 입력을 덮어씁니다.</div>
@@ -166,8 +188,12 @@ export function mountApp(root: HTMLElement): void {
         <div>
           <div id="current-slot"></div>
           <div id="outcome-slot" aria-live="assertive"></div>
+          <div id="manual-slot"></div>
           <div class="actions" id="draw-actions"></div>
-          <h3 style="margin-top:24px">당첨자 명단</h3>
+          <div class="row results-head">
+            <h3>당첨자 명단</h3>
+            <button type="button" id="export-csv">CSV 내보내기</button>
+          </div>
           <ol class="results-list" id="results"></ol>
         </div>
       </div>
@@ -181,8 +207,13 @@ export function mountApp(root: HTMLElement): void {
     const sPrize = wrap.querySelector<HTMLElement>("#s-prize")!;
     const currentSlot = wrap.querySelector<HTMLDivElement>("#current-slot")!;
     const outcomeSlot = wrap.querySelector<HTMLDivElement>("#outcome-slot")!;
+    const manualSlot = wrap.querySelector<HTMLDivElement>("#manual-slot")!;
     const actions = wrap.querySelector<HTMLDivElement>("#draw-actions")!;
     const results = wrap.querySelector<HTMLOListElement>("#results")!;
+    const exportBtn = wrap.querySelector<HTMLButtonElement>("#export-csv")!;
+
+    exportBtn.disabled = state.results.length === 0;
+    exportBtn.addEventListener("click", () => downloadResultsCsv(state));
 
     const paintStatus = (): void => {
       sRound.textContent = String(state.round);
@@ -207,6 +238,44 @@ export function mountApp(root: HTMLElement): void {
       for (const r of [...state.results].reverse()) {
         results.appendChild(resultRow(r));
       }
+    };
+
+    // FR-6.1 옵션: 수동 참가자 선택. 회전 중·종료 시에는 숨긴다.
+    const paintManual = (): void => {
+      manualSlot.replaceChildren();
+      if (finished || state.isSpinning) return;
+      const eligible = eligibleParticipants(state);
+      if (eligible.length === 0) return;
+
+      const field = document.createElement("div");
+      field.className = "field manual-field";
+      const label = document.createElement("label");
+      label.setAttribute("for", "manual-pick");
+      label.textContent = "다음 참가자 직접 지정 (선택)";
+      const select = document.createElement("select");
+      select.id = "manual-pick";
+      const auto = document.createElement("option");
+      auto.value = "";
+      auto.textContent = "자동 (무작위)";
+      select.appendChild(auto);
+      for (const p of eligible) {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.label;
+        if (p.id === state.currentParticipantId) opt.selected = true;
+        select.appendChild(opt);
+      }
+      select.addEventListener("change", () => {
+        if (select.value === "") {
+          commit(nextRound(state, createRng()));
+        } else {
+          commit(selectParticipant(state, select.value));
+        }
+        paintCurrent();
+        paintActions();
+      });
+      field.append(label, select);
+      manualSlot.appendChild(field);
     };
 
     const paintOutcome = (r: DrawResult | null): void => {
@@ -268,6 +337,7 @@ export function mountApp(root: HTMLElement): void {
       lockInputs(true); // FR-3.4 회전 중 잠금
       spinBtn.disabled = true;
 
+      manualSlot.replaceChildren(); // 회전 중 수동 선택 숨김
       await wheel.spinTo(outcome.slotIndex, state.slots.length);
 
       // 확정 — 여기서부터 저장한다.
@@ -278,6 +348,7 @@ export function mountApp(root: HTMLElement): void {
       paintStatus();
       paintCurrent();
       paintResults();
+      exportBtn.disabled = state.results.length === 0;
 
       if (state.phase === "finished") {
         rerender();
@@ -286,6 +357,7 @@ export function mountApp(root: HTMLElement): void {
       // 다음 라운드 참가자 지정 (FR-6.1 기본)
       commit(nextRound(state, createRng()));
       paintCurrent();
+      paintManual();
       paintActions();
     }
 
@@ -299,14 +371,21 @@ export function mountApp(root: HTMLElement): void {
 
     paintStatus();
     paintCurrent();
+    paintManual();
     paintResults();
     paintActions();
 
     if (finished) {
       const summary = document.createElement("p");
       summary.className = "hint";
-      const notWon = state.participants.filter((p) => p.status !== "won").length;
-      summary.textContent = `당첨 ${state.results.filter((r) => r.prizeId).length}건 · 미당첨 참가자 ${notWon}명 · 잔여 경품 ${remainingPrizeCount(state)}개`;
+      const won = state.participants.filter((p) => p.status === "won").length;
+      const out = state.participants.filter((p) => p.status === "out").length;
+      const eligible = state.participants.filter((p) => p.status === "eligible").length;
+      const parts = [`당첨 ${won}명`];
+      if (eligible > 0) parts.push(`미당첨 ${eligible}명`); // EC-1: 경품 소진 후 남은 참가자
+      if (out > 0) parts.push(`꽝 탈락 ${out}명`); // missOnceMode
+      parts.push(`잔여 경품 ${remainingPrizeCount(state)}개`); // EC-2
+      summary.textContent = parts.join(" · ");
       outcomeSlot.appendChild(summary);
     }
 
