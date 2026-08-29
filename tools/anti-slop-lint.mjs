@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Anti-AI-Slop Lint (Requirement.md 8.4).
-// AI가 생성한 스타일·카피의 흔적(그라데이션·글로우·장식 그림자·이모지·
-// 마케팅 보일러플레이트)을 검출해 위반이 있으면 exit 1.
+// AI가 생성한 카피의 흔적(이모지·마케팅 보일러플레이트)을 검출해
+// 위반이 있으면 exit 1.
 //
-// 값 파싱이 필요한 AS-CSS-3/4/5/12/14/15 는 stylelint 플러그인이 담당한다
-// (npm run lint:css). 여기서는 정규식으로 잡히는 규칙만.
+// v0.3부터 CSS 디자인 규칙(AS-CSS-*)은 제거됐다 — 원판 축제형 연출을
+// 넣으면서 무채색/장식 모션 제약을 걷어냈기 때문이다. 텍스트/카피만 검사한다.
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
@@ -68,7 +68,6 @@ function walk(dir, acc) {
 }
 
 function kindOf(file) {
-  if (file.endsWith(".css")) return "css";
   if (file.endsWith(".md")) return "md+text";
   const ext = file.slice(file.lastIndexOf("."));
   return TEXT_EXT.has(ext) ? "text" : null;
@@ -76,7 +75,6 @@ function kindOf(file) {
 
 const files = [];
 walk(ROOT, files);
-// CSS도 스캔 대상에 포함 (정규식 규칙). node_modules는 walk에서 제외됨.
 
 const violations = [];
 
@@ -88,7 +86,6 @@ for (const file of files) {
 
   for (const rule of RULES) {
     const applies =
-      (kind === "css" && rule.targets.includes("css")) ||
       (kind === "text" && rule.targets.includes("text")) ||
       (kind === "md+text" &&
         (rule.targets.includes("text") || rule.targets.includes("md")));

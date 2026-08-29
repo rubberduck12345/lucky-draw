@@ -388,7 +388,8 @@ button.primary:disabled {
 .wheel-wrap {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  /* 원판 크기 축소 (기존 520px의 약 60%). */
+  max-width: 312px;
   margin: 0 auto;
 }
 
@@ -420,8 +421,13 @@ svg.wheel .wheel-rotor {
 
 svg.wheel .sector-label {
   font-family: var(--mono);
-  font-size: 11px;
-  fill: var(--text);
+  /* 원판 라벨 크기 — 기존 11px의 4배. */
+  font-size: 44px;
+  font-weight: 700;
+  fill: #000000;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 4px;
 }
 
 .wheel-legend {
@@ -449,4 +455,79 @@ svg.wheel .sector-label {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ── 당첨 축하 효과 (폭죽·풍선) ──────────────────────────
+   결과 전달이 아닌 연출. 약 2초 재생 후 JS가 오버레이를 비운다.
+   reduced-motion에서는 호출부(wheel-view)가 아예 실행하지 않는다. */
+
+.wheel-fx {
+  position: absolute;
+  inset: -40px -40px 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.wheel-fx .fx-confetti {
+  position: absolute;
+  top: 30%;
+  width: var(--size, 8px);
+  height: var(--size, 8px);
+  background: #888;
+  animation: fx-confetti-fall var(--dur, 1600ms) var(--delay, 0ms) ease-in forwards;
+}
+
+.wheel-fx .fx-balloon {
+  position: absolute;
+  bottom: 8%;
+  width: 20px;
+  height: 26px;
+  border-radius: 50% 50% 50% 50% / 55% 55% 45% 45%;
+  background: #888;
+  animation: fx-balloon-rise var(--dur, 1800ms) var(--delay, 0ms) ease-out forwards;
+}
+
+.wheel-fx .fx-balloon::after {
+  content: "";
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 1px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheel-fx {
+    display: none;
+  }
+}
+
+@keyframes fx-confetti-fall {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+
+  to {
+    transform: translate(var(--dx, 0), var(--dy, 260px)) rotate(var(--rot, 360deg));
+    opacity: 0;
+  }
+}
+
+@keyframes fx-balloon-rise {
+  from {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  to {
+    transform: translate(var(--drift, 0), calc(-1 * var(--rise, 400px)));
+    opacity: 0;
+  }
 }

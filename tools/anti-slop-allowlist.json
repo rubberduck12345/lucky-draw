@@ -1,19 +1,7 @@
 {
-  "_comment": "Anti-AI-Slop Lint 화이트리스트 (Requirement.md 8.4.2). 항목 추가 시 사유 1줄 필수.",
-
-  "wheelRotationSelectors": [
-    ".wheel-rotor"
-  ],
-  "_wheelRotationSelectorsReason": "원판 회전은 장식이 아닌 결과 전달 수단 — Requirement.md 8.1 예외 조항. animation/transition/transform 검사에서 제외.",
-
-  "approvedBadgeClasses": [],
-  "_approvedBadgeClassesReason": "현재 승인된 뱃지/pill 클래스 없음. .tag는 당첨/꽝 상태 라벨이지 pill 스타일이 아님(배경·radius 없음).",
-
-  "fontFaceUrlAllowed": true,
-  "_fontFaceUrlReason": "@fontsource가 생성하는 @font-face { src: url(...woff2) }는 로컬 번들 폰트 로딩 — AS-CSS-16(배경/mask url) 대상 아님. node_modules는 애초에 스캔 제외.",
+  "_comment": "Anti-AI-Slop Lint 화이트리스트 (Requirement.md 8.4.2). v0.3부터 CSS 디자인 규칙(AS-CSS-*)은 제거됨 — 텍스트/카피 규칙만 남는다. 항목 추가 시 사유 1줄 필수.",
 
   "textScanExtensions": [".ts", ".tsx", ".js", ".jsx", ".html", ".md"],
-  "cssScanGlobs": ["src/**/*.css"],
 
   "excludePaths": [
     "node_modules",
@@ -21,7 +9,6 @@
     "Requirement.md",
     "CLAUDE.md",
     "tools/anti-slop-lint.mjs",
-    "tools/stylelint-plugin-anti-slop",
     "**/*.test.ts",
     "**/*.test.mjs"
   ],

@@ -60,7 +60,8 @@ export function sectorPath(
   ].join(" ");
 }
 
-// 라벨 위치 — 섹터 중심 각도, 반지름의 62% 지점.
+// 라벨 위치 — 섹터 중심 각도, 반지름의 66% 지점.
+// (라벨 글자가 커서 조금 바깥으로 밀어 중심 겹침을 줄인다.)
 export function labelPosition(
   cx: number,
   cy: number,
@@ -69,7 +70,7 @@ export function labelPosition(
   slotCount: number,
 ): Point {
   const center = slotCount === 1 ? 0 : sectorAngles(index, slotCount).center;
-  return polarToCartesian(cx, cy, r * 0.62, center);
+  return polarToCartesian(cx, cy, r * 0.66, center);
 }
 
 // ── 회전 각도 역산 (FR-3.3의 핵심) ────────────────────────────────

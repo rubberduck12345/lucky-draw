@@ -17,6 +17,6 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      # Anti-AI-Slop Lint — 위반 시 머지 차단 (Requirement.md NFR-6, 8.4.3)
+      # Lint — CSS 기본 위생(stylelint) + 카피 검사(이모지·마케팅 보일러플레이트)
       - run: npm run lint
       - run: npm run build

@@ -1,6 +1,6 @@
 # 럭키드로우 경품 추첨 원판 — 요구사항 정의서 (Requirement.md)
 
-> 버전 0.1 · 작성일 2026-06-13 · 상태 Draft
+> 버전 0.3 · 작성일 2026-06-13 · 최종 수정 2026-08-29 · 상태 Draft
 
 ---
 
@@ -14,7 +14,7 @@
   3. 당첨된 참가자는 **참가자 풀에서 제외**되어 다시 당첨될 수 없다(중복 수령 금지).
   4. 꽝에 멈추면 경품 없음. 참가자는 풀에 그대로 남는다(설정에 따라 변경 가능).
 - **종료 조건**: 경품 소진 또는 참가자 소진 시 종료.
-- **디자인**: 본 문서 8장의 Anti-AI-Slop 제약을 강제 적용한다.
+- **디자인**: v0.3부터 축제형 연출을 허용한다 — 원판 경품 섹터는 색상으로 구분하고, 당첨 시 폭죽·풍선 효과(약 2초)를 재생한다. 8장의 Anti-AI-Slop 제약 중 CSS 디자인 항목(AS-CSS-*)은 폐지됐고, 카피 제약(이모지·마케팅 보일러플레이트 금지)만 유지한다.
 
 ### 핵심 해석 가정 (의사결정 필요)
 - "중복 경품 수령 안됨"을 **"한 사람이 두 번 당첨될 수 없음"** 으로 해석했다. (각 경품도 1개씩만 존재한다고 가정)
@@ -71,6 +71,8 @@
 - **FR-3.3** 회전은 무작위 결과를 먼저 정하고, 그 섹터에 멈추도록 애니메이션을 역산한다(연출과 결과의 일관성 보장).
 - **FR-3.4** 회전 중에는 재시작/입력 변경을 잠근다(중복 클릭 방지).
 - **FR-3.5** 회전이 끝나면 결과(경품명 또는 "꽝")를 명확히 표기한다.
+- **FR-3.6** (v0.3) 경품 섹터는 각각 색으로 구분해 그린다. 색은 슬롯 구성으로부터 결정론적으로 배정하므로 새로고침·재배치 후에도 같은 원판이면 같은 색이다. 꽝 섹터는 중성 회색으로 둔다. 색은 장식이며 확률과 무관하다(FR-3.2 균등 각도 유지).
+- **FR-3.7** (v0.3) 회전이 경품 섹터에 멈추면 폭죽·풍선 축하 효과를 약 2초간 재생한다. 꽝이면 재생하지 않는다. `prefers-reduced-motion: reduce`이면 생략한다. 결과 판정과 무관한 순수 연출이다.
 
 ### 3.4 당첨 처리
 - **FR-4.1** 경품 섹터 정착 시:
@@ -88,7 +90,7 @@
 - **FR-5.1** 경품 소진 시 남은 경품 목록으로 슬롯을 다시 생성한다.
 - **FR-5.2** 남은 경품의 슬롯 순서를 **무작위로 셔플**해 위치 예측을 방지한다.
 - **FR-5.3** 꽝 슬롯은 셔플 후에도 항상 정확히 1칸 유지한다.
-- **FR-5.4** 재배치는 시각적으로 부드럽게 갱신하되, 장식 모션이 아닌 상태 전환으로 처리한다(8장 제약 준수).
+- **FR-5.4** 재배치는 상태 전환으로 처리한다(별도 트랜지션 연출 없이 슬롯을 다시 그린다).
 
 ### 3.6 진행 제어
 - **FR-6.1** 다음에 돌릴 참가자 선택 방식:
@@ -197,94 +199,51 @@ interface AppState {
 - **NFR-3 상태 보존**: 진행 상태를 `localStorage`에 저장해 새로고침에 대비(선택 구현).
 - **NFR-4 성능**: 슬롯 60개 이하에서 회전 애니메이션 끊김 없이 동작.
 - **NFR-5 무서버**: 외부 API/네트워크 의존 없이 정적 호스팅으로 동작.
-- **NFR-6 디자인 무결성 자동화**: 8.4의 Anti-AI-Slop Lint를 CI에서 강제하며, 위반이 있으면 빌드/머지를 차단한다. 디자인 제약이 사람의 리뷰 누락으로 흘러들어가지 않도록 한다.
+- **NFR-6 카피 무결성 자동화**: 8.3의 카피 검사(이모지·마케팅 보일러플레이트 금지)를 CI에서 강제하며, 위반이 있으면 빌드/머지를 차단한다. (v0.3에서 CSS 디자인 검사 항목은 폐지됨 — 8장 참조.)
 
 ---
 
-## 8. 디자인 요구사항 — Anti-AI-Slop (강제)
+## 8. 디자인 요구사항
 
-모든 화면/컴포넌트는 아래 제약을 **MUST**로 따른다. 위계는 크기·굵기·여백·정렬로만 만든다.
+> **v0.3 변경 요약.** 이 장은 원래 전면적인 Anti-AI-Slop 제약(무채색 + 액센트 1색, 장식 모션·그라데이션·색 그림자 금지, 이를 강제하는 16개 CSS lint 규칙)을 담고 있었다. v0.3에서 원판을 축제형으로 바꾸기로 하면서(경품 섹터 색상 구분, 당첨 시 폭죽·풍선) **CSS 디자인 제약(8.1의 시각 항목, 8.2, 8.3, AS-CSS-1~16)은 폐지**했다. **카피 제약(이모지·마케팅 보일러플레이트 금지)과 그 자동 검사(AS-TXT-*, AS-MD-1)는 유지**한다.
 
-### 8.1 금지 (MUST NOT)
-- 그라데이션 배경/채움(linear·radial·conic), 특히 보라/핑크 계열.
-- 색이 들어간 box-shadow, 글로우, inset 광택, blur ≥ 20px 그림자, `backdrop-filter: blur`(글래스모피즘).
-- 장식 모션: hover 시 `transform: translate/scale`, 로드 시 fade/stagger, pulse·shimmer·float·glow 키프레임.
-  - `transition`은 색·투명도 등 **기능적 상태 변화에만**, 150ms 이하.
-  - 단, 원판 회전 애니메이션은 핵심 기능이므로 예외로 허용한다(장식이 아닌 결과 전달 수단).
-- 그라데이션 텍스트(`background-clip: text`).
-- 배경 워터마크/닷·그리드 배경/페이드 마스크.
-- 카드 상단 컬러 액센트 바.
-- 이모지 불릿·장식, 뱃지/pill 남발.
-- 마케팅 보일러플레이트 단어(Seamlessly, Elevate, Unlock, Empower, Supercharge 등).
+### 8.1 카피 금지 (MUST NOT)
+- 이모지 불릿·장식 (UI 카피·라벨·문서).
+- 마케팅 보일러플레이트 단어(Seamlessly, Elevate, Unlock, Empower, Supercharge 등), 한국어 과장 카피(혁신적, 손쉽게, 놀라운 등).
 
-### 8.2 강제 (MUST)
-- 색: 무채색(흰/회/검) 베이스 + **액센트 1색**. 색은 의미(상태·위계)에만 사용.
-  - 예: 당첨 = 액센트색, 꽝 = 중성 회색.
-- 그림자: 쓰더라도 중성 회색 1단계만(`0 1px 2px rgba(0,0,0,.06)`). 없어도 무방.
-- 구획: 효과 대신 `1px solid border` + 여백으로 구분.
-- `border-radius`: 0~8px.
-- **폰트(목적형 선택 + 1줄 사유)**:
-  - 본문/UI: **IBM Plex Sans KR** — 한글·영문 균형이 좋고 중립적이되 system 기본값을 회피하기 위함.
-  - 번호/카운트/시각: **IBM Plex Mono**(tabular) — 참가자 번호와 수치 정렬 가독성을 위해 고정폭 사용.
-- 위계는 크기·굵기·여백·정렬로 구성한다.
-- 모든 시각 요소는 "어떤 정보를 전달하는가"에 답할 수 있어야 한다. 답 불가 시 삭제.
+### 8.2 시각 가이드 (SHOULD, 자동 강제 아님)
+- 위계는 되도록 크기·굵기·여백·정렬로 만든다.
+- 색은 의미(상태·위계·구분)에 쓴다. 원판 경품 섹터 색상은 "어느 칸이 어느 경품인지" 구분을 돕는 용도다.
+- 당첨/꽝은 색뿐 아니라 텍스트 라벨을 항상 병기한다(UI-2).
+- 폰트: 본문/UI는 **IBM Plex Sans KR**, 번호·수치·시각은 **IBM Plex Mono**(tabular).
+- 당첨 축하 효과(폭죽·풍선)는 약 2초로 제한하고 `prefers-reduced-motion`을 존중한다.
 
-### 8.3 출력 전 자가 점검 (하나라도 YES면 제거 후 재작성)
-- [ ] gradient(any)가 있는가?
-- [ ] blockquote에 타원형 좌측 테두리가 존재하는가?
-- [ ] 색 그림자 또는 blur ≥ 20px 그림자가 있는가?
-- [ ] hover/load에 transform·fade·키프레임 장식 모션이 있는가? (원판 회전 제외)
-- [ ] 콘텐츠와 무관한 배경 장식이 있는가?
-- [ ] 정보를 전달하지 않는 순수 장식 요소가 있는가?
-- [ ] 폰트가 Inter/Roboto/Arial/system 기본값으로 수렴했는가?
+### 8.3 자동 검사 — 카피 Lint (강제)
 
-### 8.4 자동 검사 — Anti-AI-Slop Lint (강제)
+AI가 생성한 카피의 흔적(이모지, 마케팅 보일러플레이트)을 빌드/CI 단계에서 검출해 실패시킨다.
 
-8.1~8.3의 제약은 **사람 눈에 의존하지 않고 자동으로 강제**한다. AI가 생성한 스타일·카피의 흔적(그라데이션, 글로우, 장식 그림자, 이모지, 마케팅 보일러플레이트)을 빌드/CI 단계에서 검출해 실패시킨다.
+#### 8.3.1 규칙 목록
 
-#### 8.4.1 규칙 목록
-
-**AS = Anti-Slop.** 각 규칙은 위반 시 `error`. 검사 대상 파일 확장자를 함께 명시한다.
+**AS = Anti-Slop.** 각 규칙은 위반 시 `error`.
 
 | ID | 대상 | 규칙 | 위반 판정(정규식 / 조건) |
 |---|---|---|---|
-| AS-CSS-1 | `*.css`, `*.scss`, `<style>`, styled/CSS-in-JS 문자열 | 그라데이션 함수 금지 | `/(linear\|radial\|conic)-gradient\s*\(/i` |
-| AS-CSS-2 | 〃 | `background-clip: text` / `-webkit-background-clip: text` 금지 (그라데이션 텍스트) | `/background-clip\s*:\s*text/i` |
-| AS-CSS-3 | 〃 | 색이 들어간 `box-shadow` 금지 — 그림자 색은 `rgba(0,0,0,*)` / `rgb(0 0 0 / *)` / 무채색 hex(`#000`,`#fff`,회색)만 허용 | `box-shadow` 값에 `rgba(`가 있으면서 R·G·B가 모두 동일하지 않음, 또는 유채색 키워드/hex/`hsl`/`oklch` 포함 |
-| AS-CSS-4 | 〃 | `box-shadow` blur 반경 ≥ 20px 금지 | `box-shadow`의 세 번째 길이값(blur) ≥ `20px` |
-| AS-CSS-5 | 〃 | 다중 레이어 `box-shadow`(쉼표로 2개 이상) 금지 — 중성 회색 1단계만 | `box-shadow` 값에 최상위 쉼표 존재 |
-| AS-CSS-6 | 〃 | `backdrop-filter` / `-webkit-backdrop-filter` 금지 (글래스모피즘) | `/backdrop-filter\s*:/i` |
-| AS-CSS-7 | 〃 | `filter: blur(...)`, `drop-shadow(...)` 금지 | `/filter\s*:\s*[^;]*(blur\|drop-shadow)\s*\(/i` |
-| AS-CSS-8 | 〃 | `text-shadow` 금지 (원판 라벨 포함 예외 없음) | `/text-shadow\s*:/i` (단, `none` 제외) |
-| AS-CSS-9 | 〃 | 장식 키프레임 금지 — `@keyframes` 이름/내용에 `pulse\|shimmer\|float\|glow\|shine\|gradient\|breathe\|wobble\|bounce` | 해당 이름의 `@keyframes` 정의 또는 `animation`에서 참조 |
-| AS-CSS-10 | 〃 | `animation` / `animation-name` 사용 금지 — **원판 회전 요소(`.wheel`, `[data-wheel]`)만 화이트리스트** | 화이트리스트 셀렉터 밖에서 `/animation(-name)?\s*:/i` (`none` 제외) |
-| AS-CSS-11 | 〃 | `transition` 속성은 `color`,`background-color`,`border-color`,`opacity`,`fill`,`outline-color`만 허용. `transform`/`all`/`box-shadow` 전이 금지 | `transition` 대상에 `transform`\|`all`\|`box-shadow`\|`width`\|`height`\|`filter` 포함 |
-| AS-CSS-12 | 〃 | `transition-duration` ≤ 150ms | `transition` 또는 `transition-duration`의 시간값 > `150ms` (`0.15s` 포함). 회전 요소 화이트리스트 예외 |
-| AS-CSS-13 | 〃 | `:hover`, `:focus`, `:active` 블록에서 `transform` 금지 (장식 모션) | 해당 의사클래스 규칙 본문에 `/transform\s*:/i` (`none` 제외) |
-| AS-CSS-14 | 〃 | `border-radius` ≤ 8px (`50%`는 원판/포인터 화이트리스트에서만) | `border-radius` px 값 > `8px`, 또는 화이트리스트 밖 `%`/`9999px`/`100vmax` |
-| AS-CSS-15 | 〃 | 유채색은 **액센트 토큰 1종 + 무채색**만. 임의 hex/`hsl`/`oklch` 유채색 리터럴 금지 — CSS 변수(`var(--accent)`, `var(--gray-*)`) 경유 강제 | 색상 위치에 무채색이 아닌 색 리터럴(회색 스케일·`transparent`·`currentColor` 제외) 직접 등장 |
-| AS-CSS-16 | 〃 | 배경 장식 금지 — `background`/`mask`에 `url(...)`(SVG 닷·그리드), `repeating-linear-gradient`, `mask-image` | `/(-webkit-)?mask(-image)?\s*:/i` 또는 `background`에 `url(` / `repeating-` |
-| AS-TXT-1 | `*.tsx`,`*.jsx`,`*.html`,`*.md`,`*.ts`(문자열 리터럴) | 이모지 금지 (UI 카피·불릿·라벨) | 유니코드 Emoji 속성 문자 매치 (`\p{Extended_Pictographic}`) |
-| AS-TXT-2 | 〃 | 마케팅 보일러플레이트 단어 금지 (대소문자 무시) | `\b(seamlessly?\|elevate\|unlock\|empower\|supercharge\|revolution(ary\|ize)\|game[- ]?chang\|cutting[- ]?edge\|leverage\|synerg\|effortless(ly)?\|delight(ful)?\|robust\|world[- ]?class\|next[- ]?level\|unleash)\b` |
-| AS-TXT-3 | 〃 | 한국어 과장 카피 금지 | `(혁신적\|손쉽게\|간편하게 .*있습니다\|놀라운\|최고의 경험\|매끄러운\|한 차원 높은)` |
-| AS-TXT-4 | 〃 | 뱃지/pill 클래스 남용 감지 (경고 아닌 error, 화이트리스트 관리) | `className`에 `badge`\|`pill`\|`chip`\|`tag` 가 화이트리스트(`status-badge` 등 승인 목록) 밖에서 등장 |
-| AS-MD-1 | `*.md` (문서용, UI 무관 부분 제외 가능) | blockquote 좌측 테두리 커스텀 색/타원 금지 | `blockquote`에 `border-left` + 유채색, 또는 `border-radius` |
+| AS-TXT-1 | `*.tsx`,`*.jsx`,`*.html`,`*.md`,`*.ts`,`*.js`(문자열·텍스트) | 이모지 금지 (UI 카피·불릿·라벨) | `\p{Emoji_Presentation}` / VS16 강제 이모지 / 지역표시자(국기) / 스킨톤·ZWJ 시퀀스. `↔ ™ © → …` 등 텍스트 기호는 통과 |
+| AS-TXT-2 | 〃 | 마케팅 보일러플레이트 단어 금지 (대소문자 무시) | `\b(seamlessly?\|elevate\|unlock\|empower\|supercharge\|revolution(ary\|ize)\|game[- ]?chang(er\|ing)\|cutting[- ]?edge\|leverage\|synerg(y\|ies\|ize)\|effortless(ly)?\|delight(ful)?\|world[- ]?class\|next[- ]?level\|unleash)\b` |
+| AS-TXT-3 | 〃 | 한국어 과장 카피 금지 | `(혁신적\|손쉽게\|놀라운\|최고의 경험\|매끄러운\|한 차원 높은\|한차원 높은)` |
+| AS-MD-1 | `*.md` | 문서 인라인 `<style>`의 blockquote 좌측 테두리 커스텀 금지 | `<style>` 안에 `blockquote { ... border-left ... }` |
 
-> AS-CSS-3/4/5/14/15는 값 파싱이 필요하므로 정규식만으로 불충분하다. **stylelint 커스텀 규칙 또는 PostCSS 플러그인**으로 AST 기반 검사한다. 나머지는 정규식 스캐너(예: 간단한 Node 스크립트)로 충분하다.
+#### 8.3.2 구현 방식
 
-#### 8.4.2 구현 방식
+- **카피 검사**: 저장소 내 Node 스크립트(`tools/anti-slop-lint.mjs`) — 대상 확장자를 재귀 스캔, AS-TXT-* / AS-MD-1 규칙 적용, 위반 시 파일·행·규칙 ID 출력 후 exit 1. 규칙 정의는 `tools/anti-slop-rules.mjs`.
+- **CSS 위생**: `stylelint` 최소 규칙(`color-no-invalid-hex`, `no-duplicate-selectors`, `declaration-block-no-duplicate-properties`, `block-no-empty`). 디자인 판정은 하지 않는다.
+- **화이트리스트**: `tools/anti-slop-allowlist.json` — 스캔 대상 확장자와 예외 파일 경로. 추가 시 사유 1줄 필수.
 
-- **CSS/스타일**: `stylelint` + 프로젝트 로컬 플러그인(`stylelint-plugin-anti-slop`, 저장소 내 `tools/`에 구현). CSS-in-JS를 쓰면 `postcss-styled-syntax` 등으로 문자열도 커버.
-- **텍스트/카피**: 저장소 내 Node 스크립트(`tools/anti-slop-lint.mjs`) — 대상 확장자를 glob으로 스캔, AS-TXT-* / AS-MD-* 규칙 적용, 위반 시 파일·행·규칙 ID 출력 후 exit 1.
-- **화이트리스트**: `tools/anti-slop-allowlist.json` — 원판 회전 셀렉터, 승인된 뱃지 클래스, 예외 파일 경로를 한 곳에서 관리. 화이트리스트 추가 시 PR에 사유 1줄 필수(8.2의 "목적형 선택 + 1줄 사유" 원칙 준수).
-- **폰트 검사**: `font-family` 선언에 `IBM Plex Sans KR` / `IBM Plex Mono` 외 첫 지정이 `Inter`,`Roboto`,`Arial`,`Helvetica`,`system-ui`,`-apple-system`이면 error (AS-CSS 확장, 8.2 폰트 강제와 연동).
+#### 8.3.3 실행 지점
 
-#### 8.4.3 실행 지점
-
-- **로컬**: `npm run lint` 가 `stylelint` + `anti-slop-lint` 를 함께 실행. `npm run lint:slop` 로 Anti-AI-Slop 검사만 단독 실행 가능.
-- **커밋 훅**: pre-commit(예: lint-staged)에서 변경 파일 대상 실행.
-- **CI**: PR 파이프라인에서 전체 검사. **실패 시 머지 차단**(NFR-6, 아래 7장 참조).
-- **자가 점검 8.3**은 이 자동 검사로 대체되지 않는다 — "정보를 전달하지 않는 순수 장식"처럼 정규식으로 못 잡는 항목은 코드 리뷰에서 계속 확인한다.
+- **로컬**: `npm run lint` 가 `stylelint`(CSS 위생) + `anti-slop-lint`(카피)를 함께 실행. `npm run lint:slop` 로 카피 검사만 단독 실행.
+- **커밋 훅**: `.githooks/pre-commit` 에서 변경 파일 대상 실행.
+- **CI**: PR 파이프라인에서 전체 검사. **실패 시 머지 차단**(NFR-6).
 
 ---
 
@@ -304,7 +263,7 @@ interface AppState {
 - 경품별 수량(>1) 및 가중치 추첨.
 - 다중 진행자/원격 동기화.
 - 결과 PDF/이미지 캡처 출력.
-- 효과음/타이머 등 행사 연출(장식 모션 제약과 별개로 검토).
+- 효과음 등 추가 행사 연출.
 
 ---
 
@@ -313,3 +272,4 @@ interface AppState {
 |---|---|---|
 | 0.1 | 2026-06-13 | 초안 작성 |
 | 0.2 | 2026-08-29 | 8.4 Anti-AI-Slop Lint(자동 검사) 추가, NFR-6 신설 |
+| 0.3 | 2026-08-29 | 원판 축제형 연출 도입 — 경품 섹터 색상 구분(FR-3.6), 당첨 시 폭죽·풍선 효과(FR-3.7), 원판 축소·라벨 확대. Anti-AI-Slop 중 CSS 디자인 제약(AS-CSS-1~16, 8.1 시각 항목·8.2·8.3) 폐지, 카피 제약(AS-TXT-*·AS-MD-1)만 유지. NFR-6를 "카피 무결성"으로 축소. |
