@@ -1,0 +1,14 @@
+#!/bin/sh
+# Anti-AI-Slop Lint + 타입 검사 (Requirement.md 8.4.3).
+# 활성화: git config core.hooksPath .githooks  (또는 npm install 시 자동)
+
+set -e
+
+# 스테이징된 파일이 대상 확장자를 포함할 때만 실행
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+echo "$staged" | grep -qE '\.(ts|tsx|js|jsx|mjs|css|html|md)$' || exit 0
+
+echo "pre-commit: anti-slop lint + typecheck"
+npm run lint:slop
+npm run lint:css
+npm run typecheck
